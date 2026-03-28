@@ -21,7 +21,7 @@ function validate(schema, body, res) {
 
 /** Ensures req.user owns the gym that contains memberId */
 async function requireMemberOwner(req, res) {
-  const member = await memberService.getMemberById(sql, Number(req.params.memberId));
+  const member = await memberService.getMemberById(sql, req.params.memberId);
   if (!member) {
     res.status(404).json({ success: false, error: 'Member not found' });
     return null;
@@ -46,7 +46,7 @@ router.get('/:memberId', asyncHandler(async (req, res) => {
 const UpdateMemberSchema = z.object({
   full_name: z.string().min(1).optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
-  phone: z.string().regex(/^\d{10,15}$/).optional(),
+  phone: z.string().trim().regex(/^\d{10}$/).optional(),
   email: z.string().email().optional(),
   date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   address: z.string().optional(),
@@ -82,8 +82,8 @@ router.delete('/:memberId', asyncHandler(async (req, res) => {
 // ── Memberships (renew plan) ──────────────────────────────────
 
 const AddMembershipSchema = z.object({
-  plan_id: z.coerce.number().int().positive(),
-  batch_id: z.coerce.number().int().positive().optional(),
+  plan_id: z.string().uuid(),
+  batch_id: z.string().uuid().optional(),
   purchase_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   paid_amount: z.coerce.number().min(0).optional(),
   payment_method: z.string().optional(),
@@ -113,7 +113,7 @@ router.post('/:memberId/memberships', asyncHandler(async (req, res) => {
 // ── Payments ──────────────────────────────────────────────────
 
 const AddPaymentSchema = z.object({
-  membership_id: z.coerce.number().int().positive(),
+  membership_id: z.string().uuid(),
   amount: z.coerce.number().positive(),
   payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   payment_method: z.string().optional(),
@@ -135,7 +135,7 @@ router.post('/:memberId/payments', asyncHandler(async (req, res) => {
 router.delete('/:memberId/payments/:paymentId', asyncHandler(async (req, res) => {
   const ctx = await requireMemberOwner(req, res);
   if (!ctx) return;
-  await membershipService.deletePayment(sql, Number(req.params.paymentId), ctx.gym.id);
+  await membershipService.deletePayment(sql, req.params.paymentId, ctx.gym.id);
   res.json({ success: true, data: { message: 'Payment deleted' } });
 }));
 

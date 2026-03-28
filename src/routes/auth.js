@@ -22,7 +22,7 @@ const RequestOnboarderOTPSchema = z.object({ email: z.string().email() });
 
 const SignupSchema = z.object({
   full_name: z.string().min(1),
-  phone: z.string().regex(/^\d{10,15}$/, 'Phone must be 10–15 digits'),
+  phone: z.string().trim().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
   email: z.string().email(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   onboarder_otp: z.string().regex(/^\d{6}$/, 'Onboarder OTP must be exactly 6 digits'),

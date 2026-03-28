@@ -16,7 +16,7 @@ router.use(requireAuth);
 const GymSchema = z.object({
   name: z.string().min(1),
   gym_type: z.string().min(1),
-  phone: z.string().regex(/^\d{10,15}$/, 'Phone must be 10–15 digits'),
+  phone: z.string().trim().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
   address: z.string().min(1),
   city: z.string().min(1),
   state: z.string().min(1),
@@ -40,10 +40,10 @@ const BatchSchema = z.object({
 const AddMemberSchema = z.object({
   full_name: z.string().min(1),
   gender: z.enum(['male', 'female', 'other']).optional(),
-  phone: z.string().regex(/^\d{10,15}$/, 'Phone must be 10–15 digits'),
+  phone: z.string().trim().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
   membership_id: z.string().optional(),
-  plan_id: z.coerce.number().int().positive(),
-  batch_id: z.coerce.number().int().positive().optional(),
+  plan_id: z.string().uuid(),
+  batch_id: z.string().uuid().optional(),
   purchase_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   paid_amount: z.coerce.number().min(0).optional(),
   payment_method: z.string().optional(),
@@ -63,7 +63,7 @@ function validate(schema, body, res) {
 
 /** Ensures req.user owns the gym with :gymId */
 async function requireGymOwner(req, res) {
-  const gym = await gymService.getGymById(sql, Number(req.params.gymId));
+  const gym = await gymService.getGymById(sql, req.params.gymId);
   if (!gym) {
     res.status(404).json({ success: false, error: 'Gym not found' });
     return null;
@@ -152,7 +152,7 @@ router.post('/:gymId/plans', asyncHandler(async (req, res) => {
 router.delete('/:gymId/plans/:planId', asyncHandler(async (req, res) => {
   const gym = await requireGymOwner(req, res);
   if (!gym) return;
-  await planService.deletePlan(sql, Number(req.params.planId), gym.id);
+  await planService.deletePlan(sql, req.params.planId, gym.id);
   res.json({ success: true, data: { message: 'Plan deleted' } });
 }));
 
@@ -181,7 +181,7 @@ router.post('/:gymId/batches', asyncHandler(async (req, res) => {
 router.delete('/:gymId/batches/:batchId', asyncHandler(async (req, res) => {
   const gym = await requireGymOwner(req, res);
   if (!gym) return;
-  await batchService.deleteBatch(sql, Number(req.params.batchId), gym.id);
+  await batchService.deleteBatch(sql, req.params.batchId, gym.id);
   res.json({ success: true, data: { message: 'Batch deleted' } });
 }));
 
