@@ -4,6 +4,8 @@ const cors = require('cors');
 const { config } = require('./config');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
+const gymsRouter = require('./routes/gyms');
+const membersRouter = require('./routes/members');
 
 const app = express();
 
@@ -14,6 +16,8 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', usersRouter);
+app.use('/api/v1/gyms', gymsRouter);
+app.use('/api/v1/members', membersRouter);
 
 // Global error handler — 4 params required for Express to treat as error middleware
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
