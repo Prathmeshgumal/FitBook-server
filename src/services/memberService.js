@@ -111,33 +111,79 @@ async function getMemberDetail(sql, memberId) {
   const [member] = await sql`SELECT * FROM members WHERE id = ${memberId} AND is_active = TRUE`;
   if (!member) return null;
 
-  const memberships = await sql`
+  // Single JOIN query — replaces N+1 pattern.
+  // total_paid is computed in JS from the payments array (avoids double-join overcounting).
+  const rows = await sql`
     SELECT
-      ms.*,
-      p.name          AS plan_name,
+      ms.id                AS ms_id,
+      ms.member_id,
+      ms.plan_id,
+      ms.batch_id,
+      ms.purchase_date,
+      ms.expiry_date,
+      ms.full_amount,
+      ms.discount,
+      ms.admission_fees,
+      ms.comments          AS ms_comments,
+      ms.payment_method    AS ms_payment_method,
+      ms.created_at        AS ms_created_at,
+      p.name               AS plan_name,
       p.duration_value,
       p.duration_unit,
-      b.name          AS batch_name,
-      COALESCE(SUM(pay.amount), 0) AS total_paid
+      b.name               AS batch_name,
+      pay.id               AS payment_id,
+      pay.amount           AS payment_amount,
+      pay.payment_date,
+      pay.payment_method   AS pay_payment_method
     FROM memberships ms
     JOIN plans p ON p.id = ms.plan_id
     LEFT JOIN batches b ON b.id = ms.batch_id
     LEFT JOIN payments pay ON pay.membership_id = ms.id
     WHERE ms.member_id = ${memberId}
-    GROUP BY ms.id, p.name, p.duration_value, p.duration_unit, b.name
-    ORDER BY ms.created_at DESC
+    ORDER BY ms.created_at DESC, pay.payment_date DESC
   `;
 
-  const paymentsPerMembership = await Promise.all(
-    memberships.map(async (ms) => {
-      const pays = await sql`
-        SELECT * FROM payments WHERE membership_id = ${ms.id} ORDER BY payment_date DESC
-      `;
-      return { ...ms, payments: pays };
-    })
-  );
+  const membershipMap = new Map();
+  for (const row of rows) {
+    const msKey = String(row.ms_id);
+    if (!membershipMap.has(msKey)) {
+      membershipMap.set(msKey, {
+        id: row.ms_id,
+        member_id: row.member_id,
+        plan_id: row.plan_id,
+        batch_id: row.batch_id,
+        purchase_date: row.purchase_date,
+        expiry_date: row.expiry_date,
+        full_amount: row.full_amount,
+        discount: row.discount,
+        admission_fees: row.admission_fees,
+        comments: row.ms_comments,
+        payment_method: row.ms_payment_method,
+        created_at: row.ms_created_at,
+        plan_name: row.plan_name,
+        duration_value: row.duration_value,
+        duration_unit: row.duration_unit,
+        batch_name: row.batch_name,
+        payments: [],
+      });
+    }
+    if (row.payment_id) {
+      membershipMap.get(msKey).payments.push({
+        id: row.payment_id,
+        amount: row.payment_amount,
+        payment_date: row.payment_date,
+        payment_method: row.pay_payment_method,
+      });
+    }
+  }
 
-  return { ...member, memberships: paymentsPerMembership };
+  // Compute total_paid from payments array — avoids double-join overcounting
+  const memberships = Array.from(membershipMap.values()).map(ms => ({
+    ...ms,
+    total_paid: ms.payments.reduce((sum, p) => sum + Number(p.amount), 0),
+  }));
+
+  return { ...member, memberships };
 }
 
 async function updateMember(sql, memberId, fields) {

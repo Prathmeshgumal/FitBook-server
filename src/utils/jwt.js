@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
 const { config } = require('../config');
 
-function createAccessToken(userId) {
+function createAccessToken(userId, email) {
   return jwt.sign(
-    { sub: userId, type: 'access' },
+    { sub: userId, email, type: 'access' },
     config.jwtSecretKey,
     { algorithm: config.jwtAlgorithm, expiresIn: `${config.accessTokenExpireMinutes}m` }
   );

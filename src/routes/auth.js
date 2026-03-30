@@ -78,7 +78,7 @@ router.post('/signup/verify-email', fivePerMin, asyncHandler(async (req, res) =>
   await otpService.verifyOtp(sql, data.email, data.otp, 'email_verification');
   await authService.markEmailVerified(sql, data.email);
   const user = await authService.getUserByEmail(sql, data.email);
-  const tokens = await authService.issueTokenPair(sql, user.id);
+  const tokens = await authService.issueTokenPair(sql, user.id, user.email);
   res.json({ success: true, data: { access_token: tokens.accessToken, refresh_token: tokens.refreshToken, token_type: 'bearer' } });
 }));
 
@@ -86,7 +86,7 @@ router.post('/login', tenPerMin, asyncHandler(async (req, res) => {
   const data = validate(LoginSchema, req.body, res);
   if (!data) return;
   const user = await authService.authenticateUser(sql, data.email, data.password);
-  const tokens = await authService.issueTokenPair(sql, user.id);
+  const tokens = await authService.issueTokenPair(sql, user.id, user.email);
   res.json({ success: true, data: { access_token: tokens.accessToken, refresh_token: tokens.refreshToken, token_type: 'bearer' } });
 }));
 

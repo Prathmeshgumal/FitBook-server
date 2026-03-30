@@ -47,8 +47,10 @@ async function authenticateUser(sql, email, password) {
   return user;
 }
 
-async function issueTokenPair(sql, userId) {
-  const accessToken = createAccessToken(String(userId));
+async function issueTokenPair(sql, userId, email) {
+  // email passed from login/signup flows. For token refresh, resolve from DB (only once per refresh).
+  const resolvedEmail = email ?? (await sql`SELECT email FROM users WHERE id = ${userId}`)[0]?.email ?? '';
+  const accessToken = createAccessToken(String(userId), resolvedEmail);
   const rawRefresh = generateOpaqueToken();
   const refreshHash = hashToken(rawRefresh);
   const expiresAt = new Date(Date.now() + config.refreshTokenExpireDays * 24 * 60 * 60 * 1000);

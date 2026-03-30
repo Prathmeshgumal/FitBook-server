@@ -1,6 +1,4 @@
 const { decodeToken } = require('../utils/jwt');
-const { getUserById } = require('../services/authService');
-const sql = require('../db');
 
 async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -14,11 +12,8 @@ async function requireAuth(req, res, next) {
     if (!payload.sub) {
       return res.status(401).json({ success: false, error: 'Invalid token payload' });
     }
-    const user = await getUserById(sql, payload.sub);
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'User not found or inactive' });
-    }
-    req.user = user;
+    // No DB call — user data comes from the verified JWT payload
+    req.user = { id: payload.sub, email: payload.email };
     next();
   } catch {
     return res.status(401).json({ success: false, error: 'Invalid or expired access token' });
